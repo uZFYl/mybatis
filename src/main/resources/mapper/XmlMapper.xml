@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace 属性执行映射到 XmlMapper接口 -->
+<mapper namespace="cn.tedu.mybatis.mapper.XmlMapper">
+    <!--
+     select标签标示这是一个查询操作
+     id指定当前查询操作对应的XmlMapper接口中的方法
+     -->
+    <select id="findUsername" resultType="java.lang.String">
+        select username from t_user where id=1
+    </select>
+
+    <!--  动态sql删除  使用foreach标签-->
+    <!--
+    方法的参数是一个数组,但是Mybatis设置了当参数类型是数组
+    ,基本数据类型,和字符串类型时,可以自动识别的,不用做任何配置
+    -->
+    <!--
+     foreach标签中
+     collection指定要遍历的集合或数组
+     array是Mybatis默认的传入数组的名称
+     item是指定循环变量的名称,"id"是我们起的名字
+     separator是指定分割符,","是分割每个id的字符
+     循环体中#{id}表示要生成循环的内容-->
+    <delete id="deleteByIds">
+        delete from t_user
+        where id in(
+            <foreach collection="array" item="id" separator=",">
+                #{id}
+            </foreach>
+        )
+    </delete>
+
+
+    <!--  动态修改 使用 if 标签 -->
+    <!--
+        每个方法都可能有参数和返回值
+        增删改不需要返回值,查询必须配置返回值类型(resultType)
+        如果没有参数或参数是基本数据类型,数组或字符串不用写出来
+        除上面之外尤其是我们自己定义的类型,就必须使用parameterType声明
+      -->
+    <update id="updateUserInfo"
+            parameterType="cn.tedu.mybatis.entity.User">
+        update t_user
+        <set>
+            <if test="username != null">
+                username=#{username},
+            </if>
+            <if test="password != null">
+                password=#{password},
+            </if>
+            <if test="age != null">
+                age=#{age},
+            </if>
+            <if test="phone != null">
+                phone=#{phone},
+            </if>
+            <if test="email != null">
+                email=#{email}
+            </if>
+        </set>
+        where id=#{id}
+    </update>
+
+    <!--
+    使用if标签实现的动态查询功能
+    如果查询返回的可能是多行数据,那么在编写返回值类型时
+    只设置集合泛型的类型即可
+    -->
+    <select id="findUserByParam"
+            resultType="cn.tedu.mybatis.entity.User">
+        select
+            id,
+            username,
+            password,
+            age,
+            phone,
+            email
+        from
+            t_user
+        <where>
+            <if test="username != null">
+                username like #{username}
+            </if>
+            <if test="age != null">
+                and age = #{age}
+            </if>
+            <if test="phone != null">
+                and phone like #{phone}
+            </if>
+        </where>
+    </select>
+
+    <!-- 值对象查询
+      d.name 查询出的实际列名为name
+      而UserVo中没有能够接收name的属性,
+      所以我们要将d.name起别名为deptname匹配UserVo中的属性名
+      -->
+    <select id="findUserDept"
+            resultType="cn.tedu.mybatis.vo.UserVo">
+        select
+            u.id,
+            username,
+            d.name deptname
+        from
+            t_user u
+        left join
+            t_dept d
+        on
+            u.dept_id=d.id
+    </select>
+
+    <!-- 关联查询 -->
+
+    <!--
+     关联关系映射(resultMap)
+     即部门表中哪个属性对应哪个列
+     用户表中,哪个属性对象哪个列
+     -->
+    <resultMap id="deptUser"
+               type="cn.tedu.mybatis.entity.Dept">
+        <!-- 部门表的映射关系
+         column是数据库的列名,property是java类的属性名-->
+        <result column="id" property="id"></result>
+        <result column="name" property="name"></result>
+        <!-- 员工表的映射关系-->
+        <!-- 因为员工是个集合所以用collection
+         property集合属性名
+         ofType集合的泛型类型
+         -->
+        <collection property="users"
+                    ofType="cn.tedu.mybatis.entity.User">
+            <result column="uid" property="id"></result>
+            <result column="username" property="username"></result>
+            <result column="password" property="password"></result>
+            <result column="age" property="age"></result>
+            <result column="phone" property="phone"></result>
+            <result column="email" property="email"></result>
+        </collection>
+    </resultMap>
+    <!-- 关联查询sql  -->
+    <select id="getDeptWithUser" resultMap="deptUser">
+        SELECT
+            d.id,
+            name,
+            u.id uid,
+            username,
+            password,
+            age,
+            phone,
+            email
+        FROM
+           t_dept d
+        LEFT JOIN
+           t_user u
+        ON
+            u.dept_id=d.id
+        WHERE
+            d.id=#{id}
+    </select>
+
+
+</mapper>
